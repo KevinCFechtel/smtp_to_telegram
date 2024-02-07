@@ -132,7 +132,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:    "configFilePath",
-			Value:   "conf.json",
+			Value:   "config.json",
 			Usage:   "Filepath of the config file",
 			EnvVars: []string{"ST_CONFIG_FILE_PATH"},
 		},
@@ -152,7 +152,7 @@ func initSmtpConfig(configuration Configuration) (smtpConfig *SmtpConfig) {
 	}
 
 	smtpConfig = &SmtpConfig{
-		smtpListen:          "127.0.0.1:25",
+		smtpListen:          "127.0.0.1:2525",
 		smtpPrimaryHost:     GetHostname(),
 		smtpMaxEnvelopeSize: smtpMaxEnvelopeSize,
 	}
