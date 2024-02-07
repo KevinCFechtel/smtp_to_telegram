@@ -1,3 +1,5 @@
+github.com/KevinCFechtel/goConfigHandler v0.0.0-20221228195225-0bc277f7e20f h1:ZsBEfuvV4zKxHGk3nqxvRm/jVcCPRE9uBZSGQqMBVOE=
+github.com/KevinCFechtel/goConfigHandler v0.0.0-20221228195225-0bc277f7e20f/go.mod h1:O6ESjkT7wjtKLHeDXSdjxKCWNyoDW6LKc5xIHC6Z+0I=
 github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef h1:2JGTg6JapxP9/R33ZaagQtAM4EkkSYnIAlOG5EI8gkM=
 github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef/go.mod h1:JS7hed4L1fj0hXcyEejnW57/7LCetXggd+vwrRnYeII=
 github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a h1:MISbI8sU/PSK/ztvmWKFcI7UGb5/HQT7B+i3a2myKgI=

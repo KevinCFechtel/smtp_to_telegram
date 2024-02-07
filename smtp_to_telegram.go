@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	configHandler "github.com/KevinCFechtel/goConfigHandler"
 	units "github.com/docker/go-units"
 	"github.com/jhillyerd/enmime"
 	"github.com/phires/go-guerrilla"
@@ -51,6 +52,21 @@ type TelegramConfig struct {
 	forwardedAttachmentMaxPhotoSize  int
 	forwardedAttachmentRespectErrors bool
 	messageLengthToSendAsFile        uint
+}
+
+type Configuration struct {
+	SmtpListen          			 string `json:"SmtpListen"`
+	SmtpPrimaryHost     			 string `json:"SmtpPrimaryHost"`
+	SmtpMaxEnvelopeSize 			 string `json:"SmtpMaxEnvelopeSize"`
+	TelegramChatIds                  string `json:"TelegramChatIds"`
+	TelegramBotToken                 string `json:"TelegramBotToken"`
+	TelegramApiPrefix                string `json:"TelegramApiPrefix"`
+	TelegramApiTimeoutSeconds        float64 `json:"TelegramApiTimeoutSeconds"`
+	MessageTemplate                  string `json:"MessageTemplate"`
+	ForwardedAttachmentMaxSize       string `json:"ForwardedAttachmentMaxSize"`
+	ForwardedAttachmentMaxPhotoSize  string `json:"ForwardedAttachmentMaxPhotoSize"`
+	ForwardedAttachmentRespectErrors bool `json:"ForwardedAttachmentRespectErrors"`
+	MessageLengthToSendAsFile        uint `json:"MessageLengthToSendAsFile"`
 }
 
 type TelegramAPIMessageResult struct {
@@ -95,124 +111,30 @@ func main() {
 		"all incoming Email messages to Telegram."
 	app.Version = Version
 	app.Action = func(c *cli.Context) error {
-		smtpMaxEnvelopeSize, err := units.FromHumanSize(c.String("smtp-max-envelope-size"))
+		configuration := Configuration{}
+		err := configHandler.GetConfig("localFile", c.String("configFilePath"), &configuration, GetHostname())
 		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
+			panic(fmt.Sprintf("Unable to read config: %s", err))
 		}
-		smtpConfig := &SmtpConfig{
-			smtpListen:          c.String("smtp-listen"),
-			smtpPrimaryHost:     c.String("smtp-primary-host"),
-			smtpMaxEnvelopeSize: smtpMaxEnvelopeSize,
-		}
-		forwardedAttachmentMaxSize, err := units.FromHumanSize(c.String("forwarded-attachment-max-size"))
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
-		}
-		forwardedAttachmentMaxPhotoSize, err := units.FromHumanSize(c.String("forwarded-attachment-max-photo-size"))
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
-		}
-		telegramConfig := &TelegramConfig{
-			telegramChatIds:                  c.String("telegram-chat-ids"),
-			telegramBotToken:                 c.String("telegram-bot-token"),
-			telegramApiPrefix:                c.String("telegram-api-prefix"),
-			telegramApiTimeoutSeconds:        c.Float64("telegram-api-timeout-seconds"),
-			messageTemplate:                  c.String("message-template"),
-			forwardedAttachmentMaxSize:       int(forwardedAttachmentMaxSize),
-			forwardedAttachmentMaxPhotoSize:  int(forwardedAttachmentMaxPhotoSize),
-			forwardedAttachmentRespectErrors: c.Bool("forwarded-attachment-respect-errors"),
-			messageLengthToSendAsFile:        c.Uint("message-length-to-send-as-file"),
-		}
+
+		smtpConfig := initSmtpConfig(configuration)
+
+		telegramConfig := initTelegramConfig(configuration)
+		
 		d, err := SmtpStart(smtpConfig, telegramConfig)
 		if err != nil {
 			panic(fmt.Sprintf("start error: %s", err))
 		}
+
 		sigHandler(d)
 		return nil
 	}
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
-			Name:    "smtp-listen",
-			Value:   "127.0.0.1:2525",
-			Usage:   "SMTP: TCP address to listen to",
-			EnvVars: []string{"ST_SMTP_LISTEN"},
-		},
-		&cli.StringFlag{
-			Name:    "smtp-primary-host",
-			Value:   GetHostname(),
-			Usage:   "SMTP: primary host",
-			EnvVars: []string{"ST_SMTP_PRIMARY_HOST"},
-		},
-		&cli.StringFlag{
-			Name:    "smtp-max-envelope-size",
-			Usage:   "Max size of an incoming Email. Examples: 5k, 10m.",
-			Value:   "50m",
-			EnvVars: []string{"ST_SMTP_MAX_ENVELOPE_SIZE"},
-		},
-		&cli.StringFlag{
-			Name:     "telegram-chat-ids",
-			Usage:    "Telegram: comma-separated list of chat ids",
-			EnvVars:  []string{"ST_TELEGRAM_CHAT_IDS"},
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "telegram-bot-token",
-			Usage:    "Telegram: bot token",
-			EnvVars:  []string{"ST_TELEGRAM_BOT_TOKEN"},
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:    "telegram-api-prefix",
-			Usage:   "Telegram: API url prefix",
-			Value:   "https://api.telegram.org/",
-			EnvVars: []string{"ST_TELEGRAM_API_PREFIX"},
-		},
-		&cli.StringFlag{
-			Name:    "message-template",
-			Usage:   "Telegram message template",
-			Value:   "From: {from}\\nTo: {to}\\nSubject: {subject}\\n\\n{body}\\n\\n{attachments_details}",
-			EnvVars: []string{"ST_TELEGRAM_MESSAGE_TEMPLATE"},
-		},
-		&cli.Float64Flag{
-			Name:    "telegram-api-timeout-seconds",
-			Usage:   "HTTP timeout used for requests to the Telegram API",
-			Value:   30,
-			EnvVars: []string{"ST_TELEGRAM_API_TIMEOUT_SECONDS"},
-		},
-		&cli.StringFlag{
-			Name: "forwarded-attachment-max-size",
-			Usage: "Max size of an attachment to be forwarded to telegram. " +
-				"0 -- disable forwarding. Examples: 5k, 10m. " +
-				"Telegram API has a 50m limit on their side.",
-			Value:   "10m",
-			EnvVars: []string{"ST_FORWARDED_ATTACHMENT_MAX_SIZE"},
-		},
-		&cli.StringFlag{
-			Name: "forwarded-attachment-max-photo-size",
-			Usage: "Max size of a photo attachment to be forwarded to telegram. " +
-				"0 -- disable forwarding. Examples: 5k, 10m. " +
-				"Telegram API has a 10m limit on their side.",
-			Value:   "10m",
-			EnvVars: []string{"ST_FORWARDED_ATTACHMENT_MAX_PHOTO_SIZE"},
-		},
-		&cli.BoolFlag{
-			Name: "forwarded-attachment-respect-errors",
-			Usage: "Reject the whole email if some attachments " +
-				"could not have been forwarded",
-			Value:   false,
-			EnvVars: []string{"ST_FORWARDED_ATTACHMENT_RESPECT_ERRORS"},
-		},
-		&cli.UintFlag{
-			Name: "message-length-to-send-as-file",
-			Usage: "If message length is greater than this number, it is " +
-				"sent truncated followed by a text file containing " +
-				"the full message. Telegram API has a limit of 4096 chars per message. " +
-				"The maximum text file size is determined by `forwarded-attachment-max-size`.",
-			Value:   4095,
-			EnvVars: []string{"ST_MESSAGE_LENGTH_TO_SEND_AS_FILE"},
+			Name:    "configFilePath",
+			Value:   "conf.json",
+			Usage:   "Filepath of the config file",
+			EnvVars: []string{"ST_CONFIG_FILE_PATH"},
 		},
 	}
 	err := app.Run(os.Args)
@@ -220,6 +142,113 @@ func main() {
 		fmt.Printf("%s\n", err)
 		os.Exit(1)
 	}
+}
+
+func initSmtpConfig(configuration Configuration) (smtpConfig *SmtpConfig) {
+	smtpMaxEnvelopeSize, err := units.FromHumanSize("50m")
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
+	}
+
+	smtpConfig = &SmtpConfig{
+		smtpListen:          "127.0.0.1:25",
+		smtpPrimaryHost:     GetHostname(),
+		smtpMaxEnvelopeSize: smtpMaxEnvelopeSize,
+	}
+
+	if(configuration.SmtpListen != "") {
+		smtpConfig.smtpListen = configuration.SmtpListen
+	}
+
+	if(configuration.SmtpPrimaryHost != "") {
+		smtpConfig.smtpPrimaryHost = configuration.SmtpPrimaryHost
+	}
+
+	if(configuration.SmtpMaxEnvelopeSize != "") {
+		smtpMaxEnvelopeSize, err := units.FromHumanSize(configuration.SmtpMaxEnvelopeSize)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		smtpConfig.smtpMaxEnvelopeSize = smtpMaxEnvelopeSize
+	}
+
+	return smtpConfig
+}
+
+func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramConfig){
+	forwardedAttachmentMaxSize, err := units.FromHumanSize("10m")
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
+	}
+
+	forwardedAttachmentMaxPhotoSize, err := units.FromHumanSize("10m")
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
+	}
+
+	telegramConfig = &TelegramConfig{
+		telegramChatIds:                  "",
+		telegramBotToken:                 "",
+		telegramApiPrefix:                "https://api.telegram.org/",
+		telegramApiTimeoutSeconds:        0,
+		messageTemplate:                  "From: {from}\\nSubject: {subject}\\n\\n{body}\\n\\n{attachments_details}",
+		forwardedAttachmentMaxSize:       int(forwardedAttachmentMaxSize),
+		forwardedAttachmentMaxPhotoSize:  int(forwardedAttachmentMaxPhotoSize),
+		forwardedAttachmentRespectErrors: false,
+		messageLengthToSendAsFile:        4095,
+	}
+
+	if(configuration.TelegramChatIds != "") {
+		telegramConfig.telegramChatIds = configuration.TelegramChatIds
+	}
+
+	if(configuration.TelegramBotToken != "") {
+		telegramConfig.telegramBotToken = configuration.TelegramBotToken
+	}
+
+	if(configuration.TelegramApiPrefix != "") {
+		telegramConfig.telegramApiPrefix = configuration.TelegramApiPrefix
+	}
+
+	if(configuration.TelegramApiTimeoutSeconds != 0) {
+		telegramConfig.telegramApiTimeoutSeconds = configuration.TelegramApiTimeoutSeconds
+	}
+
+	if(configuration.MessageTemplate != "") {
+		telegramConfig.messageTemplate = configuration.MessageTemplate
+	}
+
+	if(configuration.ForwardedAttachmentMaxSize != "") {
+		forwardedAttachmentMaxSize, err := units.FromHumanSize(configuration.ForwardedAttachmentMaxSize)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		telegramConfig.forwardedAttachmentMaxSize = int(forwardedAttachmentMaxSize)
+	}
+
+	if(configuration.ForwardedAttachmentMaxPhotoSize != "") {
+		forwardedAttachmentMaxPhotoSize, err := units.FromHumanSize(configuration.ForwardedAttachmentMaxPhotoSize)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		telegramConfig.forwardedAttachmentMaxPhotoSize = int(forwardedAttachmentMaxPhotoSize)
+	}
+
+	if(configuration.ForwardedAttachmentRespectErrors) {
+		telegramConfig.forwardedAttachmentRespectErrors = configuration.ForwardedAttachmentRespectErrors
+	}
+
+	if(configuration.MessageLengthToSendAsFile != 0) {
+		telegramConfig.messageLengthToSendAsFile = configuration.MessageLengthToSendAsFile
+	}
+
+	return telegramConfig;
 }
 
 func SmtpStart(

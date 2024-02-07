@@ -1,0 +1,14 @@
+{
+	"SmtpListen":"",
+	"SmtpPrimaryHost":"",
+	"SmtpMaxEnvelopeSize":"",
+	"TelegramChatIds":"",
+    "TelegramBotToken":"",
+    "TelegramApiPrefix":"",
+    "TelegramApiTimeoutSeconds":0,
+    "MessageTemplate":"",
+    "ForwardedAttachmentMaxSize":"",
+    "ForwardedAttachmentMaxPhotoSize":"",
+	"ForwardedAttachmentRespectErrors":false,
+	"MessageLengthToSendAsFile":0
+}

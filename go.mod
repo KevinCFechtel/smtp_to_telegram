@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/KevinCFechtel/goConfigHandler v0.0.0-20221228195225-0bc277f7e20f
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef // indirect
 	github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
