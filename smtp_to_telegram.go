@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,7 +25,7 @@ import (
 	"github.com/phires/go-guerrilla/backends"
 	"github.com/phires/go-guerrilla/log"
 	"github.com/phires/go-guerrilla/mail"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 var (
@@ -105,43 +106,45 @@ func GetHostname() string {
 }
 
 func main() {
-	app := cli.NewApp()
-	app.Name = "smtp_to_telegram"
-	app.Usage = "A small program which listens for SMTP and sends " +
-		"all incoming Email messages to Telegram."
-	app.Version = Version
-	app.Action = func(c *cli.Context) error {
-		configuration := Configuration{}
-		err := configHandler.GetConfig("localFile", c.String("configFilePath"), &configuration, GetHostname())
-		if err != nil {
-			panic(fmt.Sprintf("Unable to read config: %s", err))
-		}
-
-		smtpConfig := initSmtpConfig(configuration)
-
-		telegramConfig := initTelegramConfig(configuration)
-		
-		d, err := SmtpStart(smtpConfig, telegramConfig)
-		if err != nil {
-			panic(fmt.Sprintf("start error: %s", err))
-		}
-
-		sigHandler(d)
-		return nil
-	}
-	app.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:    "configFilePath",
-			Value:   "config.json",
-			Usage:   "Filepath of the config file",
-			EnvVars: []string{"ST_CONFIG_FILE_PATH"},
+	cmd := cli.Command{
+		Name: "smtp_to_telegram",
+		Usage: "A small program which listens for SMTP and sends " +
+		"all incoming Email messages to Telegram.",
+		Version: Version,
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			configuration := Configuration{}
+			err := configHandler.GetConfig("localFile", cmd.String("configFilePath"), &configuration, GetHostname())
+			if err != nil {
+				panic(fmt.Sprintf("Unable to read config: %s", err))
+			}
+	
+			smtpConfig := initSmtpConfig(configuration)
+	
+			telegramConfig := initTelegramConfig(configuration)
+			
+			d, err := SmtpStart(smtpConfig, telegramConfig)
+			if err != nil {
+				panic(fmt.Sprintf("start error: %s", err))
+			}
+	
+			sigHandler(d)
+			return nil
+		},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "configFilePath",
+				Value:   "config.json",
+				Usage:   "Filepath of the config file",
+				Sources: cli.EnvVars("ST_CONFIG_FILE_PATH"),
+			},
 		},
 	}
-	err := app.Run(os.Args)
+	err := cmd.Run(context.Background(), os.Args)
 	if err != nil {
 		fmt.Printf("%s\n", err)
 		os.Exit(1)
 	}
+	
 }
 
 func initSmtpConfig(configuration Configuration) (smtpConfig *SmtpConfig) {
@@ -266,7 +269,7 @@ func SmtpStart(
 	cfg.Servers = append(cfg.Servers, sc)
 
 	bcfg := backends.BackendConfig{
-		"save_workers_size":  3,
+		"save_workers_size":  1,
 		"save_process":       "HeadersParser|Header|Hasher|TelegramBot",
 		"log_received_mails": true,
 		"primary_mail_host":  smtpConfig.smtpPrimaryHost,
