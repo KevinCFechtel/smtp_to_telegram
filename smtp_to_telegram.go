@@ -198,7 +198,7 @@ func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramCo
 		telegramBotToken:                 "",
 		telegramApiPrefix:                "https://api.telegram.org/",
 		telegramApiTimeoutSeconds:        0,
-		messageTemplate:                  "From: {from}\\nSubject: {subject}\\n\\n{body}\\n\\n{attachments_details}",
+		messageTemplate:                  "Subject: {subject}\\n\\nMessage:\\n{body}\\n\\nAttachments:\\n{attachments_details}",
 		forwardedAttachmentMaxSize:       int(forwardedAttachmentMaxSize),
 		forwardedAttachmentMaxPhotoSize:  int(forwardedAttachmentMaxPhotoSize),
 		forwardedAttachmentRespectErrors: false,
