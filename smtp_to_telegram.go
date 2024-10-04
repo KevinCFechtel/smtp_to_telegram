@@ -56,18 +56,18 @@ type TelegramConfig struct {
 }
 
 type Configuration struct {
-	SmtpListen          			 string `json:"SmtpListen"`
-	SmtpPrimaryHost     			 string `json:"SmtpPrimaryHost"`
-	SmtpMaxEnvelopeSize 			 string `json:"SmtpMaxEnvelopeSize"`
-	TelegramChatIds                  string `json:"TelegramChatIds"`
-	TelegramBotToken                 string `json:"TelegramBotToken"`
-	TelegramApiPrefix                string `json:"TelegramApiPrefix"`
+	SmtpListen                       string  `json:"SmtpListen"`
+	SmtpPrimaryHost                  string  `json:"SmtpPrimaryHost"`
+	SmtpMaxEnvelopeSize              string  `json:"SmtpMaxEnvelopeSize"`
+	TelegramChatIds                  string  `json:"TelegramChatIds"`
+	TelegramBotToken                 string  `json:"TelegramBotToken"`
+	TelegramApiPrefix                string  `json:"TelegramApiPrefix"`
 	TelegramApiTimeoutSeconds        float64 `json:"TelegramApiTimeoutSeconds"`
-	MessageTemplate                  string `json:"MessageTemplate"`
-	ForwardedAttachmentMaxSize       string `json:"ForwardedAttachmentMaxSize"`
-	ForwardedAttachmentMaxPhotoSize  string `json:"ForwardedAttachmentMaxPhotoSize"`
-	ForwardedAttachmentRespectErrors bool `json:"ForwardedAttachmentRespectErrors"`
-	MessageLengthToSendAsFile        uint `json:"MessageLengthToSendAsFile"`
+	MessageTemplate                  string  `json:"MessageTemplate"`
+	ForwardedAttachmentMaxSize       string  `json:"ForwardedAttachmentMaxSize"`
+	ForwardedAttachmentMaxPhotoSize  string  `json:"ForwardedAttachmentMaxPhotoSize"`
+	ForwardedAttachmentRespectErrors bool    `json:"ForwardedAttachmentRespectErrors"`
+	MessageLengthToSendAsFile        uint    `json:"MessageLengthToSendAsFile"`
 }
 
 type TelegramAPIMessageResult struct {
@@ -109,7 +109,7 @@ func main() {
 	cmd := cli.Command{
 		Name: "smtp_to_telegram",
 		Usage: "A small program which listens for SMTP and sends " +
-		"all incoming Email messages to Telegram.",
+			"all incoming Email messages to Telegram.",
 		Version: Version,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			configuration := Configuration{}
@@ -117,16 +117,16 @@ func main() {
 			if err != nil {
 				panic(fmt.Sprintf("Unable to read config: %s", err))
 			}
-	
+
 			smtpConfig := initSmtpConfig(configuration)
-	
+
 			telegramConfig := initTelegramConfig(configuration)
-			
+
 			d, err := SmtpStart(smtpConfig, telegramConfig)
 			if err != nil {
 				panic(fmt.Sprintf("start error: %s", err))
 			}
-	
+
 			sigHandler(d)
 			return nil
 		},
@@ -144,7 +144,6 @@ func main() {
 		fmt.Printf("%s\n", err)
 		os.Exit(1)
 	}
-	
 }
 
 func initSmtpConfig(configuration Configuration) (smtpConfig *SmtpConfig) {
@@ -160,15 +159,15 @@ func initSmtpConfig(configuration Configuration) (smtpConfig *SmtpConfig) {
 		smtpMaxEnvelopeSize: smtpMaxEnvelopeSize,
 	}
 
-	if(configuration.SmtpListen != "") {
+	if configuration.SmtpListen != "" {
 		smtpConfig.smtpListen = configuration.SmtpListen
 	}
 
-	if(configuration.SmtpPrimaryHost != "") {
+	if configuration.SmtpPrimaryHost != "" {
 		smtpConfig.smtpPrimaryHost = configuration.SmtpPrimaryHost
 	}
 
-	if(configuration.SmtpMaxEnvelopeSize != "") {
+	if configuration.SmtpMaxEnvelopeSize != "" {
 		smtpMaxEnvelopeSize, err := units.FromHumanSize(configuration.SmtpMaxEnvelopeSize)
 		if err != nil {
 			fmt.Printf("%s\n", err)
@@ -180,7 +179,7 @@ func initSmtpConfig(configuration Configuration) (smtpConfig *SmtpConfig) {
 	return smtpConfig
 }
 
-func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramConfig){
+func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramConfig) {
 	forwardedAttachmentMaxSize, err := units.FromHumanSize("10m")
 	if err != nil {
 		fmt.Printf("%s\n", err)
@@ -205,27 +204,27 @@ func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramCo
 		messageLengthToSendAsFile:        4095,
 	}
 
-	if(configuration.TelegramChatIds != "") {
+	if configuration.TelegramChatIds != "" {
 		telegramConfig.telegramChatIds = configuration.TelegramChatIds
 	}
 
-	if(configuration.TelegramBotToken != "") {
+	if configuration.TelegramBotToken != "" {
 		telegramConfig.telegramBotToken = configuration.TelegramBotToken
 	}
 
-	if(configuration.TelegramApiPrefix != "") {
+	if configuration.TelegramApiPrefix != "" {
 		telegramConfig.telegramApiPrefix = configuration.TelegramApiPrefix
 	}
 
-	if(configuration.TelegramApiTimeoutSeconds != 0) {
+	if configuration.TelegramApiTimeoutSeconds != 0 {
 		telegramConfig.telegramApiTimeoutSeconds = configuration.TelegramApiTimeoutSeconds
 	}
 
-	if(configuration.MessageTemplate != "") {
+	if configuration.MessageTemplate != "" {
 		telegramConfig.messageTemplate = configuration.MessageTemplate
 	}
 
-	if(configuration.ForwardedAttachmentMaxSize != "") {
+	if configuration.ForwardedAttachmentMaxSize != "" {
 		forwardedAttachmentMaxSize, err := units.FromHumanSize(configuration.ForwardedAttachmentMaxSize)
 		if err != nil {
 			fmt.Printf("%s\n", err)
@@ -234,7 +233,7 @@ func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramCo
 		telegramConfig.forwardedAttachmentMaxSize = int(forwardedAttachmentMaxSize)
 	}
 
-	if(configuration.ForwardedAttachmentMaxPhotoSize != "") {
+	if configuration.ForwardedAttachmentMaxPhotoSize != "" {
 		forwardedAttachmentMaxPhotoSize, err := units.FromHumanSize(configuration.ForwardedAttachmentMaxPhotoSize)
 		if err != nil {
 			fmt.Printf("%s\n", err)
@@ -243,15 +242,15 @@ func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramCo
 		telegramConfig.forwardedAttachmentMaxPhotoSize = int(forwardedAttachmentMaxPhotoSize)
 	}
 
-	if(configuration.ForwardedAttachmentRespectErrors) {
+	if configuration.ForwardedAttachmentRespectErrors {
 		telegramConfig.forwardedAttachmentRespectErrors = configuration.ForwardedAttachmentRespectErrors
 	}
 
-	if(configuration.MessageLengthToSendAsFile != 0) {
+	if configuration.MessageLengthToSendAsFile != 0 {
 		telegramConfig.messageLengthToSendAsFile = configuration.MessageLengthToSendAsFile
 	}
 
-	return telegramConfig;
+	return telegramConfig
 }
 
 func SmtpStart(
