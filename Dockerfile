@@ -1,33 +1,18 @@
-FROM golang:1.20-alpine3.18 AS builder
-
-RUN apk add --no-cache git ca-certificates mailcap
-
-WORKDIR /app
-
+#build stage
+FROM golang:alpine AS builder
+RUN apk add --no-cache git
+WORKDIR /go/src/app
 COPY . .
+RUN go get -d -v ./...
+RUN go build  -o /go/bin/app smtp_to_telegram.go
 
-# The image should be built with
-# --build-arg ST_VERSION=`git describe --tags --always`
-ARG ST_VERSION
-ARG GOPROXY=direct
-RUN CGO_ENABLED=0 GOOS=linux go build \
-        -ldflags "-s -w \
-            -X main.Version=${ST_VERSION:-UNKNOWN_RELEASE}" \
-        -a -o smtp_to_telegram
-
-
-
-
-
-FROM alpine:3.18
-
-RUN apk add --no-cache ca-certificates mailcap
-
-COPY --from=builder /app/smtp_to_telegram /smtp_to_telegram
-
-USER daemon
-
-ENV ST_SMTP_LISTEN="0.0.0.0:2525"
-EXPOSE 2525
-
-ENTRYPOINT ["/smtp_to_telegram"]
+#final stage
+FROM alpine:latest
+ENV CONFIG_FILE_PATH='NoConfigFile'
+ENV SMTP_LISTEN='127.0.0.1:2525'
+ENV TELEGRAM_CHAT_IDS=''
+ENV TELEGRAM_BOT_TOKEN=''
+RUN apk --no-cache add ca-certificates
+COPY --from=builder /go/bin/app /app
+ENTRYPOINT ["/bin/sh", "-c", "/app --configFilePath=${CONFIG_FILE_PATH} --smtpListen=${SMTP_LISTEN} --telegramChatIds=${TELEGRAM_CHAT_IDS} --telegramBotToken=${TELEGRAM_BOT_TOKEN}"]
+LABEL Name=goRSSDedup Version=1.0

@@ -113,9 +113,16 @@ func main() {
 		Version: Version,
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			configuration := Configuration{}
-			err := configHandler.GetConfig("localFile", cmd.String("configFilePath"), &configuration, GetHostname())
-			if err != nil {
-				panic(fmt.Sprintf("Unable to read config: %s", err))
+			configFilePath := cmd.String("configFilePath")
+			if configFilePath != "NoConfigFile" {
+				err := configHandler.GetConfig("localFile", cmd.String("configFilePath"), &configuration, GetHostname())
+				if err != nil {
+					panic(fmt.Sprintf("Unable to read config: %s", err))
+				}
+			} else {
+				configuration.SmtpListen = cmd.String("smtpListen")
+				configuration.TelegramChatIds = cmd.String("telegramChatIds")
+				configuration.TelegramBotToken = cmd.String("telegramBotToken")
 			}
 
 			smtpConfig := initSmtpConfig(configuration)
@@ -136,6 +143,24 @@ func main() {
 				Value:   "config.json",
 				Usage:   "Filepath of the config file",
 				Sources: cli.EnvVars("ST_CONFIG_FILE_PATH"),
+			},
+			&cli.StringFlag{
+				Name:    "smtpListen",
+				Value:   "127.0.0.1:2525",
+				Usage:   "SMTP listen address",
+				Sources: cli.EnvVars("SMTP_LISTEN"),
+			},
+			&cli.StringFlag{
+				Name:    "telegramChatIds",
+				Value:   "",
+				Usage:   "Telegram chat IDs (comma separated) to send messages to",
+				Sources: cli.EnvVars("TELEGRAM_CHAT_IDS"),
+			},
+			&cli.StringFlag{
+				Name:    "telegramBotToken",
+				Value:   "",
+				Usage:   "Telegram bot token",
+				Sources: cli.EnvVars("TELEGRAM_BOT_TOKEN"),
 			},
 		},
 	}
