@@ -121,8 +121,17 @@ func main() {
 				}
 			} else {
 				configuration.SmtpListen = cmd.String("smtpListen")
+				configuration.SmtpPrimaryHost = cmd.String("smtpPrimaryHost")
+				configuration.SmtpMaxEnvelopeSize = cmd.String("smtpMaxEnvelopeSize")
 				configuration.TelegramChatIds = cmd.String("telegramChatIds")
 				configuration.TelegramBotToken = cmd.String("telegramBotToken")
+				configuration.TelegramApiPrefix = cmd.String("telegramApiPrefix")
+				configuration.TelegramApiTimeoutSeconds = cmd.Float("telegramApiTimeoutSeconds")
+				configuration.MessageTemplate = cmd.String("messageTemplate")
+				configuration.ForwardedAttachmentMaxSize = cmd.String("forwardedAttachmentMaxSize")
+				configuration.ForwardedAttachmentMaxPhotoSize = cmd.String("forwardedAttachmentMaxPhotoSize")
+				configuration.ForwardedAttachmentRespectErrors = cmd.Bool("forwardedAttachmentRespectErrors")
+				configuration.MessageLengthToSendAsFile = uint(cmd.Uint("messageLengthToSendAsFile"))
 			}
 
 			smtpConfig := initSmtpConfig(configuration)
@@ -140,15 +149,27 @@ func main() {
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "configFilePath",
-				Value:   "config.json",
+				Value:   "NoConfigFile",
 				Usage:   "Filepath of the config file",
-				Sources: cli.EnvVars("ST_CONFIG_FILE_PATH"),
+				Sources: cli.EnvVars("CONFIG_FILE_PATH"),
 			},
 			&cli.StringFlag{
 				Name:    "smtpListen",
-				Value:   "127.0.0.1:2525",
+				Value:   "",
 				Usage:   "SMTP listen address",
 				Sources: cli.EnvVars("SMTP_LISTEN"),
+			},
+			&cli.StringFlag{
+				Name:    "smtpPrimaryHost",
+				Value:   "",
+				Usage:   "SMTP primary host",
+				Sources: cli.EnvVars("SMTP_PRIMARY_HOST"),
+			},
+			&cli.StringFlag{
+				Name:    "smtpMaxEnvelopeSize",
+				Value:   "",
+				Usage:   "SMTP max envelope size (e.g., 50m, 1g)",
+				Sources: cli.EnvVars("SMTP_MAX_ENVELOPE_SIZE"),
 			},
 			&cli.StringFlag{
 				Name:    "telegramChatIds",
@@ -161,6 +182,48 @@ func main() {
 				Value:   "",
 				Usage:   "Telegram bot token",
 				Sources: cli.EnvVars("TELEGRAM_BOT_TOKEN"),
+			},
+			&cli.StringFlag{
+				Name:    "telegramApiPrefix",
+				Value:   "",
+				Usage:   "Telegram API prefix",
+				Sources: cli.EnvVars("TELEGRAM_API_PREFIX"),
+			},
+			&cli.FloatFlag{
+				Name:    "telegramApiTimeoutSeconds",
+				Value:   0,
+				Usage:   "Telegram API timeout in seconds",
+				Sources: cli.EnvVars("TELEGRAM_API_TIMEOUT_SECONDS"),
+			},
+			&cli.StringFlag{
+				Name:    "messageTemplate",
+				Value:   "",
+				Usage:   "Message template",
+				Sources: cli.EnvVars("MESSAGE_TEMPLATE"),
+			},
+			&cli.StringFlag{
+				Name:    "forwardedAttachmentMaxSize",
+				Value:   "",
+				Usage:   "Forwarded attachment max size (e.g., 10m, 100m)",
+				Sources: cli.EnvVars("FORWARDED_ATTACHMENT_MAX_SIZE"),
+			},
+			&cli.StringFlag{
+				Name:    "forwardedAttachmentMaxPhotoSize",
+				Value:   "",
+				Usage:   "Forwarded attachment max photo size (e.g., 10m, 100m)",
+				Sources: cli.EnvVars("FORWARDED_ATTACHMENT_MAX_PHOTO_SIZE"),
+			},
+			&cli.BoolFlag{
+				Name:    "forwardedAttachmentRespectErrors",
+				Value:   false,
+				Usage:   "Forwarded attachment respect errors",
+				Sources: cli.EnvVars("FORWARDED_ATTACHMENT_RESPECT_ERRORS"),
+			},
+			&cli.UintFlag{
+				Name:    "messageLengthToSendAsFile",
+				Value:   0,
+				Usage:   "Message length to send as file",
+				Sources: cli.EnvVars("MESSAGE_LENGTH_TO_SEND_AS_FILE"),
 			},
 		},
 	}
@@ -424,30 +487,31 @@ func SendAttachmentToChat(
 	w := multipart.NewWriter(buf)
 	var method string
 	// https://core.telegram.org/bots/api#sending-files
-	if attachment.fileType == ATTACHMENT_TYPE_DOCUMENT {
-		// https://core.telegram.org/bots/api#senddocument
-		method = "sendDocument"
-		panicIfError(w.WriteField("chat_id", chatId))
-		panicIfError(w.WriteField("reply_to_message_id", sentMessage.MessageId.String()))
-		panicIfError(w.WriteField("caption", attachment.caption))
-		// TODO maybe reuse files sent to multiple chats via file_id?
-		dw, err := w.CreateFormFile("document", attachment.filename)
-		panicIfError(err)
-		_, err = dw.Write(attachment.content)
-		panicIfError(err)
-	} else if attachment.fileType == ATTACHMENT_TYPE_PHOTO {
-		// https://core.telegram.org/bots/api#sendphoto
-		method = "sendPhoto"
-		panicIfError(w.WriteField("chat_id", chatId))
-		panicIfError(w.WriteField("reply_to_message_id", sentMessage.MessageId.String()))
-		panicIfError(w.WriteField("caption", attachment.caption))
-		// TODO maybe reuse files sent to multiple chats via file_id?
-		dw, err := w.CreateFormFile("photo", attachment.filename)
-		panicIfError(err)
-		_, err = dw.Write(attachment.content)
-		panicIfError(err)
-	} else {
-		panic(fmt.Errorf("unknown file type %d", attachment.fileType))
+	switch attachment.fileType {
+		case ATTACHMENT_TYPE_DOCUMENT:
+			// https://core.telegram.org/bots/api#senddocument
+			method = "sendDocument"
+			panicIfError(w.WriteField("chat_id", chatId))
+			panicIfError(w.WriteField("reply_to_message_id", sentMessage.MessageId.String()))
+			panicIfError(w.WriteField("caption", attachment.caption))
+			// TODO maybe reuse files sent to multiple chats via file_id?
+			dw, err := w.CreateFormFile("document", attachment.filename)
+			panicIfError(err)
+			_, err = dw.Write(attachment.content)
+			panicIfError(err)
+		case ATTACHMENT_TYPE_PHOTO:
+			// https://core.telegram.org/bots/api#sendphoto
+			method = "sendPhoto"
+			panicIfError(w.WriteField("chat_id", chatId))
+			panicIfError(w.WriteField("reply_to_message_id", sentMessage.MessageId.String()))
+			panicIfError(w.WriteField("caption", attachment.caption))
+			// TODO maybe reuse files sent to multiple chats via file_id?
+			dw, err := w.CreateFormFile("photo", attachment.filename)
+			panicIfError(err)
+			_, err = dw.Write(attachment.content)
+			panicIfError(err)
+		default:
+			panic(fmt.Errorf("unknown file type %d", attachment.fileType))
 	}
 	w.Close()
 

@@ -186,7 +186,7 @@ func TestHtmlAttachmentIsIgnored(t *testing.T) {
 	m.SetBody("text/plain", "Text body")
 	m.AddAlternative("text/html", "<p>HTML body</p>")
 
-	di := gomail.NewPlainDialer(testSmtpListenHost, testSmtpListenPort, "", "")
+	di := gomail.NewDialer(testSmtpListenHost, testSmtpListenPort, "", "")
 	err := di.DialAndSend(m)
 	assert.NoError(t, err)
 
