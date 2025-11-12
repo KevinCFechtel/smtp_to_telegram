@@ -138,6 +138,8 @@ func main() {
 
 			telegramConfig := initTelegramConfig(configuration)
 
+			fmt.Printf("SMTP to Telegram starting, listening on %s", smtpConfig.smtpListen)
+
 			d, err := SmtpStart(smtpConfig, telegramConfig)
 			if err != nil {
 				panic(fmt.Sprintf("start error: %s", err))
@@ -367,7 +369,6 @@ func SmtpStart(
 	daemon.AddProcessor("TelegramBot", TelegramBotProcessorFactory(telegramConfig))
 
 	logger = daemon.Log()
-
 	err := daemon.Start()
 	return daemon, err
 }
