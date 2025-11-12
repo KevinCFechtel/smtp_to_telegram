@@ -344,7 +344,7 @@ func initTelegramConfig(configuration Configuration) (telegramConfig *TelegramCo
 func SmtpStart(
 	smtpConfig *SmtpConfig, telegramConfig *TelegramConfig) (guerrilla.Daemon, error) {
 
-	cfg := &guerrilla.AppConfig{LogFile: log.OutputStdout.String()}
+	cfg := &guerrilla.AppConfig{LogFile: log.OutputStdout.String(), LogLevel: "error"}
 
 	cfg.AllowedHosts = []string{"."}
 
@@ -358,7 +358,7 @@ func SmtpStart(
 	bcfg := backends.BackendConfig{
 		"save_workers_size":  1,
 		"save_process":       "HeadersParser|Header|Hasher|TelegramBot",
-		"log_received_mails": true,
+		"log_received_mails": false,
 		"primary_mail_host":  smtpConfig.smtpPrimaryHost,
 	}
 	cfg.BackendConfig = bcfg

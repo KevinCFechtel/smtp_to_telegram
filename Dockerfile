@@ -12,4 +12,4 @@ RUN apk --no-cache add ca-certificates
 RUN apk --no-cache add busybox-extras
 COPY --from=builder /go/bin/app /app
 ENTRYPOINT ["/bin/sh", "-c", "/app"]
-LABEL Name=goRSSDedup Version=1.0
+LABEL Name=smtp_to_telegram Version=1.0
